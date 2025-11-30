@@ -1,6 +1,0 @@
-[submodule "src/frontend"]
-	path = src/frontend
-	url = https://github.com/Outercircl-dev/frontend.git
-[submodule "src/backend"]
-	path = src/backend
-	url = https://github.com/Outercircl-dev/backend.git
