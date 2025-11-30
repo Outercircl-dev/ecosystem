@@ -1,0 +1,33 @@
+services:
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    container_name: outercircl-backend
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+    ports:
+      - '4000:4000'
+    networks:
+      - outercircl-net
+
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+    container_name: outercircl-frontend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: 'http://backend:4000'
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      - backend
+    ports:
+      - '3000:3000'
+    networks:
+      - outercircl-net
+
+networks:
+  outercircl-net:
+    driver: bridge
