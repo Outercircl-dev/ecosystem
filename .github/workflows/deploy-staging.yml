@@ -2,16 +2,14 @@ name: Deploy to AWS ECS (staging)
 
 on:
   push:
-    branches: [ "staging" ]
+    branches: ['staging']
 
 env:
-  AWS_REGION: "eu-west-1"
-  AWS_ACCOUNT: "886789338873"
-  BACKEND_REPO: "${{ env.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/outercircl-backend"
-  FRONTEND_REPO: "${{ env.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/outercircl-frontend"
-  CLUSTER: "outercircl-staging"
-  SERVICE_BACKEND: "outercircl-backend-staging-service"
-  SERVICE_FRONTEND: "outercircl-frontend-staging-service"
+  AWS_REGION: 'eu-west-1'
+  AWS_ACCOUNT: '886789338873'
+  CLUSTER: 'outercircl-staging'
+  SERVICE_BACKEND: 'outercircl-backend-staging-service'
+  SERVICE_FRONTEND: 'outercircl-frontend-staging-service'
 
 jobs:
   deploy:
@@ -22,55 +20,61 @@ jobs:
       id-token: write
 
     steps:
-    - name: Checkout ecosystem with submodules
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Checkout ecosystem with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Update submodules to latest main
-      run: |
-        git submodule foreach '
-          git checkout main || true
-          git pull origin main || true
-        '
+      - name: Update submodules to latest main branch
+        run: |
+          git submodule foreach '
+            git checkout main || true
+            git pull origin main || true
+          '
 
-    - name: Configure AWS credentials from GitHub OIDC
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: arn:aws:iam::886789338873:role/GitHubDeployRole
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::886789338873:role/GitHubDeployRole
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Login to Amazon ECR
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Build backend image
-      run: |
-        docker build -t backend:${GITHUB_SHA} ./src/backend
-        docker tag backend:${GITHUB_SHA} $BACKEND_REPO:staging-${GITHUB_SHA}
-        docker tag backend:${GITHUB_SHA} $BACKEND_REPO:staging-latest
-        docker push $BACKEND_REPO:staging-${GITHUB_SHA}
-        docker push $BACKEND_REPO:staging-latest
+      - name: Build backend image
+        run: |
+          BACKEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/outercircl-backend"
 
-    - name: Build frontend image
-      run: |
-        docker build -t frontend:${GITHUB_SHA} ./src/frontend
-        docker tag frontend:${GITHUB_SHA} $FRONTEND_REPO:staging-${GITHUB_SHA}
-        docker tag frontend:${GITHUB_SHA} $FRONTEND_REPO:staging-latest
-        docker push $FRONTEND_REPO:staging-${GITHUB_SHA}
-        docker push $FRONTEND_REPO:staging-latest
+          docker build -t backend:${GITHUB_SHA} ./src/backend
+          docker tag backend:${GITHUB_SHA} $BACKEND_REPO:staging-${GITHUB_SHA}
+          docker tag backend:${GITHUB_SHA} $BACKEND_REPO:staging-latest
 
-    - name: Deploy backend service
-      run: |
-        aws ecs update-service \
-          --cluster $CLUSTER \
-          --service $SERVICE_BACKEND \
-          --force-new-deployment \
-          --region $AWS_REGION
+          docker push $BACKEND_REPO:staging-${GITHUB_SHA}
+          docker push $BACKEND_REPO:staging-latest
 
-    - name: Deploy frontend service
-      run: |
-        aws ecs update-service \
-          --cluster $CLUSTER \
-          --service $SERVICE_FRONTEND \
-          --force-new-deployment \
-          --region $AWS_REGION
+      - name: Build frontend image
+        run: |
+          FRONTEND_REPO="${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/outercircl-frontend"
+
+          docker build -t frontend:${GITHUB_SHA} ./src/frontend
+          docker tag frontend:${GITHUB_SHA} $FRONTEND_REPO:staging-${GITHUB_SHA}
+          docker tag frontend:${GITHUB_SHA} $FRONTEND_REPO:staging-latest
+
+          docker push $FRONTEND_REPO:staging-${GITHUB_SHA}
+          docker push $FRONTEND_REPO:staging-latest
+
+      - name: Deploy backend service
+        run: |
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service $SERVICE_BACKEND \
+            --force-new-deployment \
+            --region $AWS_REGION
+
+      - name: Deploy frontend service
+        run: |
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service $SERVICE_FRONTEND \
+            --force-new-deployment \
+            --region $AWS_REGION
